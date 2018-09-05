@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StaticPointers #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 import Control.Concurrent.Async
 import Control.Concurrent.Chan
@@ -82,8 +83,17 @@ double = (*2)
 newtype SerializableInt = SI Int deriving (Generic, Typeable)
 withStatic [d|
   instance Binary SerializableInt
-  instance Serializable SerializableInt
   |]
+
+instance (Typeable a, Typeable b, Static a, Static b, (a, b)) => Static (a, b) where
+  closureDict = closure (static joinDict) `cap` closureDict  `cap` closureDict
+
+instance Static (Typeable SerializableInt) where
+  closureDict = closure (static Dict)
+
+joinDict :: Dict c1 -> Dict c2 -> Dict (c1, c2)
+joinDict Dict Dict = Dict
+
 
 -- | Demonstration of client server interactions.
 main :: IO ()
